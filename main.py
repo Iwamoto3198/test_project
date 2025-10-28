@@ -1,50 +1,29 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-class User(BaseModel):
-    id: int
-    name: str
-    age: int
+# Reactとの接続のためにCORSを許可
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # React開発用URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-users = []
+class Post(BaseModel):
+    title: str
+    body: str
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello, World!"}
+posts = []
 
-@app.post("/users/", response_model=User)
-def create_user(user: User):
-    users.append(user)
-    return user
+@app.get("/posts")
+def get_posts():
+    return posts
 
-@app.get("/users/", response_model=List[User])
-def read_users():
-    return users
-
-@app.get("/users/{user_id}", response_model=User)
-def read_user(user_id: int):
-    for user in users:
-        if user.id == user_id:
-            return user
-    raise HTTPException(status_code=404, detail="User not found")
-
-@app.put("/users/{user_id}", response_model=User)
-def update_user(user_id: int, updated_user: User):
-    for user in users:
-        if user.id == user_id:
-            user.name = updated_user.name
-            user.age = updated_user.age
-            return user
-    raise HTTPException(status_code=404, detail="User not found")
-
-@app.delete("/users/{user_id}")
-def delete_user(user_id: int):
-    global users
-    original_length = len(users)
-    users = [user for user in users if user.id != user_id]
-    if len(users) == original_length:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"message": "User deleted"}
+@app.post("/posts")
+def create_post(post: Post):
+    posts.append(post)
+    return post
