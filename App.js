@@ -1,56 +1,133 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 function App() {
-  const [posts, setPosts] = useState([]);
+  const [todos, setTodos] = useState([]);
   const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios.get('http://127.0.0.1:8000/posts')
-      .then(response => setPosts(response.data))
+    fetch('http://127.0.0.1:8000/todos')
+      .then(response => response.json())
+      .then(data => setTodos(data))
       .catch(() => setError('データ取得に失敗しました'));
   }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('http://127.0.0.1:8000/posts', { title, body })
-      .then(response => {
-        setPosts([...posts, response.data]);
+    fetch('http://127.0.0.1:8000/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, completed: false })
+    })
+      .then(response => response.json())
+      .then(data => {
+        setTodos([...todos, data]);
         setTitle('');
-        setBody('');
         setError(null);
       })
-      .catch(() => setError('投稿に失敗しました'));
+      .catch(() => setError('TODO追加に失敗しました'));
+  };
+
+  const handleToggle = (id, completed) => {
+    fetch(`http://127.0.0.1:8000/todos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: !completed })
+    })
+      .then(response => response.json())
+      .then(data => {
+        setTodos(todos.map(todo => 
+          todo.id === id ? data : todo
+        ));
+      })
+      .catch(() => setError('TODO更新に失敗しました'));
+  };
+
+  const handleDelete = (id) => {
+    fetch(`http://127.0.0.1:8000/todos/${id}`, { method: 'DELETE' })
+      .then(() => {
+        setTodos(todos.filter(todo => todo.id !== id));
+      })
+      .catch(() => setError('TODO削除に失敗しました'));
   };
 
   return (
-    <div>
-      <h1>投稿一覧</h1>
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
+      <h1>TODOリスト</h1>
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      {posts.map((post, index) => (
-        <div key={index}>
-          <h2>{post.title}</h2>
-          <p>{post.body}</p>
-        </div>
-      ))}
-      <form onSubmit={handleSubmit}>
+      
+      <div style={{ marginBottom: '20px' }}>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="タイトル"
-          required
+          placeholder="新しいTODOを入力"
+          style={{ 
+            width: '70%', 
+            padding: '10px', 
+            marginRight: '10px',
+            fontSize: '16px'
+          }}
         />
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="本文"
-          required
-        />
-        <button type="submit">投稿する</button>
-      </form>
+        <button 
+          onClick={handleSubmit}
+          disabled={!title.trim()}
+          style={{ 
+            padding: '10px 20px',
+            fontSize: '16px',
+            cursor: 'pointer'
+          }}
+        >
+          追加
+        </button>
+      </div>
+
+      <ul style={{ listStyle: 'none', padding: 0 }}>
+        {todos.map((todo) => (
+          <li 
+            key={todo.id} 
+            style={{ 
+              marginBottom: '10px', 
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+              <input
+                type="checkbox"
+                checked={todo.completed}
+                onChange={() => handleToggle(todo.id, todo.completed)}
+                style={{ marginRight: '10px', cursor: 'pointer' }}
+              />
+              <span 
+                style={{ 
+                  textDecoration: todo.completed ? 'line-through' : 'none',
+                  color: todo.completed ? '#888' : '#000'
+                }}
+              >
+                {todo.title}
+              </span>
+            </div>
+            <button 
+              onClick={() => handleDelete(todo.id)}
+              style={{ 
+                padding: '5px 10px',
+                backgroundColor: '#ff4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              削除
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
